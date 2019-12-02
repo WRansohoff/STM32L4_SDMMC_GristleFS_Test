@@ -242,6 +242,44 @@ uint32_t sdmmc_get_volume_size( SDMMC_TypeDef *SDMMCx,
   }
 }
 
+/**
+ * Check if an SD/MMC card with the given address is currently busy
+ * or not. Return non-zero if the card is busy, 0 if it isn't.
+ * TODO: Should this also check the DAT0 line for 'R1b' responses?
+ */
+int sdmmc_is_card_busy( SDMMC_TypeDef *SDMMCx, uint16_t card_addr ) {
+  // Send CMD13 to get the card's status register.
+  uint32_t sd_stat_reg = 0;
+  sdmmc_cmd_write( SDMMCx,
+                   SDMMC_CMD_GET_STAT,
+                   ( ( uint32_t )card_addr ) << 16,
+                   SDMMC_RESPONSE_SHORT );
+  // Read the response.
+  sdmmc_cmd_read( SDMMCx, SDMMC_RESPONSE_SHORT, &sd_stat_reg );
+  sdmmc_cmd_done( SDMMCx );
+  // The current card state is stored in bits 9-12 of the response.
+  // 0 = idle, 1 = ready, 2 = ident, 3 = standby, 4 = selected for
+  // data transmission, 5 = transmitting, 6 = receiving,
+  // 7 = programming, 8 = disabled, 9-15 are reserved.
+  // I'm going to return 'busy' for all modes except for 'ready',
+  // 'standby', 'idle', 'ident', and 'selected for data transmission'.
+  // In reality, after initialization the card should either be
+  // in state #3 if it is not selected, or state #4 if it is.
+  // Otherwise, it should be considered busy. But this method
+  // might be called during the identification process, so better
+  // safe than sorry.
+  uint32_t cur_state = ( sd_stat_reg & 0x00008E00 ) >> 9;
+  if ( ( cur_state == SDMMC_STATE_IDLE ) |
+       ( cur_state == SDMMC_STATE_READY ) |
+       ( cur_state == SDMMC_STATE_IDENT ) |
+       ( cur_state == SDMMC_STATE_STBY ) |
+       ( cur_state == SDMMC_STATE_TRAN ) ) {
+    return 0;
+  }
+  // If the card is busy, return its state (which will be non-zero.)
+  return cur_state;
+}
+
 /** Read N blocks of data from an address on the SD/MMC card. */
 void sdmmc_block_read( SDMMC_TypeDef *SDMMCx,
                        blockno_t start_block,

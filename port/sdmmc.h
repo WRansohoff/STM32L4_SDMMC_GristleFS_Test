@@ -27,6 +27,17 @@
 // Card type definition.
 #define SDMMC_SC             ( 0 )
 #define SDMMC_HC             ( 1 )
+// SD card state machine values, returned in the status register.
+#define SDMMC_STATE_IDLE     ( 0 )
+#define SDMMC_STATE_READY    ( 1 )
+#define SDMMC_STATE_IDENT    ( 2 )
+#define SDMMC_STATE_STBY     ( 3 )
+#define SDMMC_STATE_TRAN     ( 4 )
+#define SDMMC_STATE_DATA     ( 5 )
+#define SDMMC_STATE_RCV      ( 6 )
+#define SDMMC_STATE_PRG      ( 7 )
+#define SDMMC_STATE_DIS      ( 8 )
+#define SDMMC_STATE_IO       ( 15 )
 
 // SD card command index values. Because referring to them as
 // `CMD0`, `CMD1`, etc is confusing and not very helpful.
@@ -174,6 +185,8 @@ void sdmmc_set_bus_width( SDMMC_TypeDef *SDMMCx,
 uint32_t sdmmc_get_volume_size( SDMMC_TypeDef *SDMMCx,
                                 uint32_t card_type,
                                 uint32_t *csd_regs );
+// Check if the card is busy or not.
+int sdmmc_is_card_busy( SDMMC_TypeDef *SDMMCx, uint16_t card_addr );
 
 // Read N blocks of data from an address on the SD/MMC card.
 void sdmmc_block_read( SDMMC_TypeDef *SDMMCx,
