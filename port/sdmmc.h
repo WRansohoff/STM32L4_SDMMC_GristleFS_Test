@@ -188,16 +188,28 @@ uint32_t sdmmc_get_volume_size( SDMMC_TypeDef *SDMMCx,
 // Check if the card is busy or not.
 int sdmmc_is_card_busy( SDMMC_TypeDef *SDMMCx, uint16_t card_addr );
 
-// Read N blocks of data from an address on the SD/MMC card.
-void sdmmc_block_read( SDMMC_TypeDef *SDMMCx,
+// Read one block of data from an address on the SD/MMC card.
+void sdmmc_read_block( SDMMC_TypeDef *SDMMCx,
+                       uint32_t card_type,
+                       uint16_t card_addr,
                        blockno_t start_block,
-                       void *buf,
-                       int blen );
-// Write N blocks of data to an address on the SD/MMC card.
-void sdmmc_block_write( SDMMC_TypeDef *SDMMCx,
+                       uint32_t *buf );
+// Read N blocks of data from an address on the SD/MMC card.
+void sdmmc_read_blocks( SDMMC_TypeDef *SDMMCx,
                         blockno_t start_block,
-                        void *buf,
+                        uint32_t *buf,
                         int blen );
+// Write one block of data to an address on the SD/MMC card.
+void sdmmc_write_block( SDMMC_TypeDef *SDMMCx,
+                        uint32_t card_type,
+                        uint16_t card_addr,
+                        blockno_t start_block,
+                        uint32_t *buf );
+// Write N blocks of data to an address on the SD/MMC card.
+void sdmmc_write_blocks( SDMMC_TypeDef *SDMMCx,
+                         blockno_t start_block,
+                         uint32_t *buf,
+                         int blen );
 // Erase a block range on the SD/MMC card, given start ID and length.
 void sdmmc_erase_blocks( SDMMC_TypeDef *SDMMCx,
                          blockno_t start_block,

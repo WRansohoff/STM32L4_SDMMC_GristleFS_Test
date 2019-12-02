@@ -168,13 +168,21 @@ int block_halt() {
 
 /** Read a block from the current SD card into a given buffer. */
 int block_read( blockno_t block, void *buf ) {
-  sdmmc_block_read( sdmmc, block, buf, 1 );
+  sdmmc_read_block( sdmmc,
+                    ( card.type == SD_CARD_HC ) ? SDMMC_HC : SDMMC_SC,
+                    card.addr,
+                    block,
+                    ( uint32_t* )buf );
   return 0;
 }
 
 /** Write a block of data to the current SD card from a buffer. */
 int block_write( blockno_t block, void *buf ) {
-  sdmmc_block_write( sdmmc, block, buf, 1 );
+  sdmmc_write_block( sdmmc,
+                     ( card.type == SD_CARD_HC ) ? SDMMC_HC : SDMMC_SC,
+                     card.addr,
+                     block,
+                     ( uint32_t* )buf );
   return 0;
 }
 

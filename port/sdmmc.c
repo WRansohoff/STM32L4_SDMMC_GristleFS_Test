@@ -22,6 +22,11 @@ void sdmmc_setup( SDMMC_TypeDef *SDMMCx ) {
                       SDMMC_CLKCR_NEGEDGE |
                       SDMMC_CLKCR_HWFC_EN );
   SDMMCx->CLKCR |=  ( 0x1 << SDMMC_CLKCR_WIDBUS_Pos );
+  // Set the card block size to 512 bytes.
+  // TODO: It might not be in all cases, but for now this HAL assumes
+  // that you will set standard-capacity cards to use 512B blocks.
+  SDMMCx->DCTRL &= ~( SDMMC_DCTRL_DBLOCKSIZE );
+  SDMMCx->DCTRL |=  ( 9 << SDMMC_DCTRL_DBLOCKSIZE_Pos );
   // Power on the SD/MMC peripheral.
   SDMMCx->POWER |=  ( SDMMC_POWER_PWRCTRL );
   // Wait for the peripheral to exit 'powering up' mode.
@@ -280,20 +285,130 @@ int sdmmc_is_card_busy( SDMMC_TypeDef *SDMMCx, uint16_t card_addr ) {
   return cur_state;
 }
 
-/** Read N blocks of data from an address on the SD/MMC card. */
-void sdmmc_block_read( SDMMC_TypeDef *SDMMCx,
+/**
+ * Read one block of data from an address on the SD/MMC card.
+ * Standard-capacity cards take the byte offset of the starting
+ * address as an argument, while high-capacity cards take the
+ * block offset. TODO: This assumes that the block length is
+ * always 512 bytes, but standard-capacity cards can have
+ * a different block size. I plan to always set SC cards to
+ * use 512-byte blocks, so I'm okay with that assumption.
+ */
+void sdmmc_read_block( SDMMC_TypeDef *SDMMCx,
+                       uint32_t card_type,
+                       uint16_t card_addr,
                        blockno_t start_block,
-                       void *buf,
-                       int blen ) {
-  // TODO
+                       uint32_t *buf ) {
+  // Calculate the command argument.
+  uint32_t start_addr = ( uint32_t )start_block;
+  if ( card_type == SDMMC_SC ) { start_addr *= 512; }
+
+  // CMD7 to select the card. (TODO: Check for success)
+  sdmmc_cmd_write( SDMMCx,
+                   SDMMC_CMD_SEL_DESEL,
+                   ( ( uint32_t )card_addr ) << 16,
+                   SDMMC_RESPONSE_SHORT );
+  sdmmc_cmd_done( SDMMCx );
+
+  // Prepare for read: set data timeout and length.
+  SDMMCx->DTIMER =  ( 0x00004000 );
+  SDMMCx->DLEN   =  ( 512 );
+  // Set the data control register for 'card-to-controller' data
+  // flow, and enable the data flow state machine.
+  // Note: DTEN is automatically cleared when the transfer completes.
+  SDMMCx->DCTRL |=  ( SDMMC_DCTRL_DTDIR |
+                      SDMMC_DCTRL_DTEN );
+
+  // CMD17 to read a single block at the given address.
+  sdmmc_cmd_write( SDMMCx,
+                   SDMMC_CMD_READ_BLOCK,
+                   start_addr,
+                   SDMMC_RESPONSE_SHORT );
+  sdmmc_cmd_done( SDMMCx );
+
+  // Read the data from the FIFO buffer as it becomes available.
+  // TODO: Synchronous polling is slow, but okay for testing.
+  int buf_ind = 0;
+  while ( SDMMCx->DCOUNT != 0 ) {
+    while ( !( SDMMCx->STA & SDMMC_STA_RXDAVL ) ) {};
+    buf[ buf_ind ] = SDMMCx->FIFO;
+    ++buf_ind;
+  }
+
+  // Done reading; CMD7 to de-select the card.
+  sdmmc_cmd_write( SDMMCx,
+                   SDMMC_CMD_SEL_DESEL,
+                   ( ( uint32_t )card_addr ^ 0x0000FFFF ) << 16,
+                   SDMMC_RESPONSE_SHORT );
+  sdmmc_cmd_done( SDMMCx );
+}
+
+/** Read N blocks of data from an address on the SD/MMC card. */
+void sdmmc_read_blocks( SDMMC_TypeDef *SDMMCx,
+                        blockno_t start_block,
+                        uint32_t *buf,
+                        int blen ) {
+  // TODO: CMD23 / CMD18 to read multiple blocks.
+}
+
+/** Write one block of data to an address on the SD/MMC card. */
+void sdmmc_write_block( SDMMC_TypeDef *SDMMCx,
+                        uint32_t card_type,
+                        uint16_t card_addr,
+                        blockno_t start_block,
+                        uint32_t *buf ) {
+  // Calculate the command argument.
+  uint32_t start_addr = ( uint32_t )start_block;
+  if ( card_type == SDMMC_SC ) { start_addr *= 512; }
+
+  // CMD7 to select the card. (TODO: Check for success)
+  sdmmc_cmd_write( SDMMCx,
+                   SDMMC_CMD_SEL_DESEL,
+                   ( ( uint32_t )card_addr ) << 16,
+                   SDMMC_RESPONSE_SHORT );
+  sdmmc_cmd_done( SDMMCx );
+
+  // CMD24 to write a block of data.
+  sdmmc_cmd_write( SDMMCx,
+                   SDMMC_CMD_WRITE_BLOCK,
+                   start_addr,
+                   SDMMC_RESPONSE_SHORT );
+  sdmmc_cmd_done( SDMMCx );
+
+  // Prepare for write: set data timeout and length.
+  SDMMCx->DTIMER =  ( 0x00004000 );
+  SDMMCx->DLEN   =  ( 512 );
+  // Set the data control register for 'controller-to-card' data
+  // flow, and enable the data flow state machine.
+  // Note: DTEN is automatically cleared when the transfer completes.
+  SDMMCx->DCTRL &= ~( SDMMC_DCTRL_DTDIR );
+  SDMMCx->DCTRL |=  ( SDMMC_DCTRL_DTEN );
+
+  // Write data to the FIFO buffer as space frees up.
+  // TODO: Synchronous polling is slow, but okay for testing.
+  int buf_ind = 0;
+  while ( SDMMCx->DCOUNT != 0 ) {
+    // Use the 'half-empty' flag to send new data as long as
+    // at least 8 words in the queue are empty.
+    while ( !( SDMMCx->STA & SDMMC_STA_TXFIFOHE ) ) {};
+    SDMMCx->FIFO = buf[ buf_ind ];
+    ++buf_ind;
+  }
+
+  // Done writing; CMD7 to de-select the card.
+  sdmmc_cmd_write( SDMMCx,
+                   SDMMC_CMD_SEL_DESEL,
+                   ( ( uint32_t )card_addr ^ 0x0000FFFF ) << 16,
+                   SDMMC_RESPONSE_SHORT );
+  sdmmc_cmd_done( SDMMCx );
 }
 
 /** Write N blocks of data to an address on the SD/MMC card. */
-void sdmmc_block_write( SDMMC_TypeDef *SDMMCx,
-                        blockno_t start_block,
-                        void *buf,
-                        int blen ) {
-  // TODO
+void sdmmc_write_blocks( SDMMC_TypeDef *SDMMCx,
+                         blockno_t start_block,
+                         uint32_t *buf,
+                         int blen ) {
+  // TODO: CMD23 / CMD 24 to write multiple blocks.
 }
 
 /**
