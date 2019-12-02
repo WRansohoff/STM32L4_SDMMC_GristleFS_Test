@@ -69,7 +69,7 @@ else
 endif
 LFLAGS += -Wall
 LFLAGS += --specs=nosys.specs
-LFLAGS += -nostdlib
+#LFLAGS += -nostdlib
 LFLAGS += -lgcc
 LFLAGS += -T$(LSCRIPT)
 
@@ -81,6 +81,8 @@ C_SRC    += ./port/gpio.c
 C_SRC    += ./port/rcc.c
 C_SRC    += ./port/sdmmc.c
 C_SRC    += ./port/tim.c
+C_SRC    += ./fs/src/gristle.c
+C_SRC    += ./fs/src/block_drivers/block_sd_foss.c
 
 INCLUDE   = -I./
 INCLUDE  += -I./src
