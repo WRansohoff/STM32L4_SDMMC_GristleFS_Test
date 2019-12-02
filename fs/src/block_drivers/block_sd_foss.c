@@ -69,10 +69,14 @@ int block_init() {
 
   // App CMD 41 to initialize the card.
   // Send ACMD41 with the 'HCS' bit (#30) set if the card is SD V2+.
+  // The 'busy' bit (#31) also seems to be required, otherwise the
+  // card will always respond that it is busy. Weird.
   // You can also set the 'S18R' bit (#24) to check if the card
   // supports 1.8V signalling levels, but that is not done here.
+  // Bits 15-23 specify supported voltage ranges; 0.1V per bit.
+  // (Bit 15 is 2.7V-2.8V, bit 23 is 3.5V-3.6V. Ask for 2.7-3.6V)
   uint32_t acmd_arg =
-    ( card.type == SD_CARD_HC ) ? 0x40000000 : 0x00000000;
+    ( card.type == SD_CARD_HC ) ? 0xC0FF8000 : 0x80FF8000;
   // Keep calling ACMD41 until the 'done powering up' bit is set.
   // If I read the OCR register right, that bit prevents the
   // 'standard / high capacity' flag from being set when low.
