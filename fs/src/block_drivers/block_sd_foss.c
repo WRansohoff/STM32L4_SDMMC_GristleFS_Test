@@ -44,7 +44,8 @@ int block_init() {
                    SDMMC_RESPONSE_SHORT );
   // Receive the response, if any.
   cmd_resp_ind = sdmmc_cmd_read_type( sdmmc );
-  sdmmc_cmd_read( sdmmc, SDMMC_RESPONSE_SHORT, cmd_resp );
+  sdmmc_cmd_read( sdmmc, SDMMC_RESPONSE_SHORT,
+                  SDMMC_CHECK_CRC, cmd_resp );
   sdmmc_cmd_done( sdmmc );
   // Check for valid response types.
   // TODO: macro definitions for constants.
@@ -88,8 +89,8 @@ int block_init() {
                      SDMMC_APP_HCS_OPCOND,
                      acmd_arg,
                      SDMMC_RESPONSE_SHORT );
-    cmd_resp_ind = sdmmc_cmd_read_type( sdmmc );
-    sdmmc_cmd_read( sdmmc, SDMMC_RESPONSE_SHORT, cmd_resp );
+    sdmmc_cmd_read( sdmmc, SDMMC_RESPONSE_SHORT,
+                    SDMMC_NO_CRC, cmd_resp );
     sdmmc_cmd_done( sdmmc );
   }
   // Once the above loop exits, the first response element holds
@@ -113,7 +114,8 @@ int block_init() {
                    0x00000000,
                    SDMMC_RESPONSE_SHORT );
   cmd_resp_ind = sdmmc_cmd_read_type( sdmmc );
-  sdmmc_cmd_read( sdmmc, SDMMC_RESPONSE_SHORT, cmd_resp );
+  sdmmc_cmd_read( sdmmc, SDMMC_RESPONSE_SHORT,
+                  SDMMC_CHECK_CRC, cmd_resp );
   sdmmc_cmd_done( sdmmc );
   // Bits 0-15 are status bits, and bits 16-31 are the new address.
   card.addr = cmd_resp[ 0 ] >> 16;
@@ -124,7 +126,8 @@ int block_init() {
                    ( ( uint32_t )card.addr ) << 16,
                    SDMMC_RESPONSE_LONG );
   cmd_resp_ind = sdmmc_cmd_read_type( sdmmc );
-  sdmmc_cmd_read( sdmmc, SDMMC_RESPONSE_LONG, cmd_resp );
+  sdmmc_cmd_read( sdmmc, SDMMC_RESPONSE_LONG,
+                  SDMMC_CHECK_CRC, cmd_resp );
   sdmmc_cmd_done( sdmmc );
 
   // Find the card's storage capacity from its CSD registers.

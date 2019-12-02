@@ -81,15 +81,24 @@ uint8_t sdmmc_cmd_read_type( SDMMC_TypeDef *SDMMCx ) {
  * response registers'. This can receive the response from a command.
  * If `type` is `SDMMC_RESPONSE_SHORT`, only the first word is read.
  * If `type` is `SDMMC_RESPONSE_LONG`, all 4 words are read.
+ * If `ignore_crc` is non-zero, then `SDMMC_STA_CCRCFAIL` will be a
+ * treated as a successful response. This is necessary for some
+ * application commands which do not send a CRC with the response.
  */
-int sdmmc_cmd_read( SDMMC_TypeDef *SDMMCx, int type, void *buf ) {
+int sdmmc_cmd_read( SDMMC_TypeDef *SDMMCx,
+                    int type,
+                    int ignore_crc,
+                    void *buf ) {
   uint32_t *buf_ptr = ( uint32_t* )buf;
   // Wait for a response to be received, or some sort of failure.
   while ( !( SDMMCx->STA & ( SDMMC_STA_CMDSENT |
                              SDMMC_STA_CMDREND |
                              SDMMC_STA_CTIMEOUT |
                              SDMMC_STA_CCRCFAIL ) ) ) {};
-  if ( SDMMCx->STA & SDMMC_STA_CMDREND ) {
+  if ( ( SDMMCx->STA & SDMMC_STA_CMDREND ) ||
+       ( ( SDMMCx->STA & SDMMC_STA_CCRCFAIL ) &&
+         ( ignore_crc && ( ( type == SDMMC_RESPONSE_SHORT ) ||
+                           ( type == SDMMC_RESPONSE_LONG ) ) ) ) ) {
     // Only check for received data if a valid response was received.
     if ( type == SDMMC_RESPONSE_SHORT ) {
       // Only read the first response register for short responses.
@@ -108,8 +117,11 @@ int sdmmc_cmd_read( SDMMC_TypeDef *SDMMCx, int type, void *buf ) {
       return 0;
     }
   }
-  else if ( SDMMCx->STA & SDMMC_STA_CMDSENT ) {
-    // No response expected, and no errors: return 0.
+  else if ( SDMMCx->STA & SDMMC_STA_CMDSENT ||
+            ( ( SDMMCx->STA & SDMMC_STA_CCRCFAIL ) &&
+            ( ignore_crc && ( ( type == SDMMC_RESPONSE_NONE2 ) ||
+            ( type == SDMMC_RESPONSE_NONE ) ) ) ) ) {
+    // No response expected, and no unexpected errors: return 0.
     return 0;
   }
   // No valid response received, or invalid response type: return -1.
@@ -262,7 +274,8 @@ int sdmmc_is_card_busy( SDMMC_TypeDef *SDMMCx, uint16_t card_addr ) {
                    ( ( uint32_t )card_addr ) << 16,
                    SDMMC_RESPONSE_SHORT );
   // Read the response.
-  sdmmc_cmd_read( SDMMCx, SDMMC_RESPONSE_SHORT, &sd_stat_reg );
+  sdmmc_cmd_read( SDMMCx, SDMMC_RESPONSE_SHORT,
+                  SDMMC_CHECK_CRC, &sd_stat_reg );
   sdmmc_cmd_done( SDMMCx );
   // The current card state is stored in bits 9-12 of the response.
   // 0 = idle, 1 = ready, 2 = ident, 3 = standby, 4 = selected for
