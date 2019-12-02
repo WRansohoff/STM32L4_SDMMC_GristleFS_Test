@@ -48,12 +48,12 @@ int block_init() {
   sdmmc_cmd_done( sdmmc );
   // Check for valid response types.
   // TODO: macro definitions for constants.
-  if ( cmd_resp_ind == 5 ) {
+  if ( cmd_resp_ind != 8 ) {
     // The card rejected the command; this means it is SDC V1
     // (Or, according to elmchan, MMC V3)
     card.type = SD_CARD_SC;
   }
-  else if ( cmd_resp_ind == 1 ) {
+  else {
     // The card responded, so it is SDC V2+
     // Check the response to make sure that it supports
     // the desired voltage range. Bits 0-7 should be
@@ -64,11 +64,6 @@ int block_init() {
       return -1;
     }
     card.type = SD_CARD_HC;
-  }
-  else {
-    // No response; return -1.
-    card.type = SD_CARD_ERROR;
-    return -1;
   }
 
   // App CMD 41 to initialize the card.

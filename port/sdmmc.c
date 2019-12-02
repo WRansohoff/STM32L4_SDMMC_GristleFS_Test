@@ -15,13 +15,15 @@ void sdmmc_setup( SDMMC_TypeDef *SDMMCx ) {
   // * Set bus width to 4 bits (microSD cards have DAT0-3 lines)
   // * Disable power-saving mode for now. (TODO: Use PWRSAV bit)
   // * Set CLKDIV to 0 (even though it is not used with clock bypass)
+  // * Set CLKEN to enable the clock.
   SDMMCx->CLKCR &= ~( SDMMC_CLKCR_CLKDIV |
                       SDMMC_CLKCR_PWRSAV |
                       SDMMC_CLKCR_BYPASS |
                       SDMMC_CLKCR_WIDBUS |
                       SDMMC_CLKCR_NEGEDGE |
                       SDMMC_CLKCR_HWFC_EN );
-  SDMMCx->CLKCR |=  ( 0x1 << SDMMC_CLKCR_WIDBUS_Pos );
+  SDMMCx->CLKCR |=  ( 0x1 << SDMMC_CLKCR_WIDBUS_Pos |
+                      SDMMC_CLKCR_CLKEN );
   // Set the card block size to 512 bytes.
   // TODO: It might not be in all cases, but for now this HAL assumes
   // that you will set standard-capacity cards to use 512B blocks.
