@@ -7,6 +7,9 @@
 // Global application values.
 #include "global.h"
 
+// Gristle FAT filesystem includes.
+#include "gristle.h"
+
 /**
  * Main program.
  */
@@ -15,7 +18,11 @@ int main(void) {
   // peripherals. The method can be found in the BSP header file.
   board_init();
 
-  // TODO: Initialize and test the connected SD card.
+  // Initialize the connected SD card.
+  block_init();
+  // Mount the filesystem. Assume that the entire card is formatted,
+  // and there is no partition table.
+  fat_mount( 0, block_get_volume_size(), 0 );
 
   // Main application loop.
   while (1) {
