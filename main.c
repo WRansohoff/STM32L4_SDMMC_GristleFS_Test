@@ -19,8 +19,9 @@ int main(void) {
   // peripherals. The method can be found in the BSP header file.
   board_init();
 
-  // TODO: Turn on the on-board LED to indicate that the SD card
-  // may have ongoing writes, so the board shouldn't be shut down.
+  // Turn on the on-board LED to indicate that the SD card may have
+  // ongoing writes, so the board shouldn't be shut down.
+  gpio_hi( GPIOA, 15 );
 
   // Initialize the connected SD card.
   int sderr;
@@ -54,8 +55,9 @@ int main(void) {
   // Done; un-mount the filesystem to prevent SD card corruption.
   block_halt();
 
-  // TODO: Turn on-board LED off to indicate that it's safe
-  // to power-down the board.
+  // Turn on-board LED off to indicate that it's safe to turn off
+  // the device.
+  gpio_lo( GPIOA, 15 );
 
   // Main application loop.
   while (1) {

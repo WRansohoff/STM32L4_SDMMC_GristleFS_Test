@@ -93,10 +93,10 @@ static inline void board_init( void ) {
   gpio_af_setup( GPIOA, 5, 5, 1 );
   gpio_af_setup( GPIOA, 6, 5, 1 );
   gpio_af_setup( GPIOA, 7, 5, 1 );
+  */
   // PA15: 'Heartbeat' LED. (Note: overrides JTDI debugging pin)
   gpio_setup( GPIOA, 15, GPIO_OUT_PP );
   gpio_lo( GPIOA, 15 );
-  */
   // PC8, PC9, PC10, PC11, PC12: Alt. Func. #12 / high-speed:
   // (SD/MMC dat0, dat1, dat2, dat3, and clock pins)
   gpio_af_setup( GPIOC, 8,  12, 2 );
