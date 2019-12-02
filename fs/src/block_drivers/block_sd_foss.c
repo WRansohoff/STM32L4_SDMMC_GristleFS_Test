@@ -153,10 +153,18 @@ int block_init() {
 
 /**
  * Shut down the SD card interface.
- * TODO: Currently unused, it looks unnecessary for the applications
- * that I have in mind.
+ * TODO: Error checking.
  */
-int block_halt() { return 0; }
+int block_halt() {
+  // Send CMD15 to put the card into an inactive state.
+  sdmmc_cmd_write( sdmmc,
+                   SDMMC_CMD_GO_IDLE,
+                   ( ( uint32_t )card.addr ) << 16,
+                   SDMMC_RESPONSE_NONE );
+  sdmmc_cmd_done( sdmmc );
+  // Done; return 0 to indicate success.
+  return 0;
+}
 
 /** Read a block from the current SD card into a given buffer. */
 int block_read( blockno_t block, void *buf ) {
