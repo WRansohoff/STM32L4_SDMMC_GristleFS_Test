@@ -52,7 +52,7 @@ static inline void board_init( void ) {
   clock_init();
 
   // Enable peripherals: GPIOA, GPIOB, GPIOC, GPIOD,
-  // UART4, ADC, DAC1, DMA1, SPI1, TIM3, SDMMC1, SYSCFG.
+  // UART4, ADC, DAC1, DMA1, SPI1, TIM3, TIM6, SDMMC1, SYSCFG.
   RCC->AHB1ENR  |=  ( RCC_AHB1ENR_DMA1EN );
   RCC->AHB2ENR  |=  ( RCC_AHB2ENR_GPIOAEN |
                       RCC_AHB2ENR_GPIOBEN |
@@ -61,6 +61,7 @@ static inline void board_init( void ) {
                       RCC_AHB2ENR_ADCEN );
   RCC->APB1ENR1 |=  ( RCC_APB1ENR1_DAC1EN |
                       RCC_APB1ENR1_TIM3EN |
+                      RCC_APB1ENR1_TIM6EN |
                       RCC_APB1ENR1_UART4EN );
   RCC->APB2ENR  |=  ( RCC_APB2ENR_SDMMC1EN |
                       RCC_APB2ENR_SPI1EN |
