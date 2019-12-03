@@ -111,6 +111,16 @@ int block_init() {
     }
   }
 
+  // CMD2 to put the card into 'identification mode'.
+  // The card should respond with the contents of its CID register.
+  sdmmc_cmd_write( sdmmc,
+                   SDMMC_CMD_PUB_CID,
+                   0x00000000,
+                   SDMMC_RESPONSE_LONG );
+  sdmmc_cmd_read( sdmmc, SDMMC_RESPONSE_LONG,
+                  SDMMC_CHECK_CRC, cmd_resp );
+  sdmmc_cmd_done( sdmmc );
+
   // CMD3 to get an address that the card will respond to.
   // TODO: Error-checking?
   sdmmc_cmd_write( sdmmc,

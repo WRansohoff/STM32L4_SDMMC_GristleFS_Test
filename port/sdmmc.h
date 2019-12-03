@@ -55,7 +55,7 @@
 // 'Respond With CID Register' command - this asks any cards on
 // the bus to respond with the contents of their CID register.
 // ('CID' = 'Card IDentifier')
-#define SDMMC_CMD_RECV_CID       ( 2 )
+#define SDMMC_CMD_PUB_CID        ( 2 )
 // Ask the card to publish a new 'Relative Card Address' (RCA)
 // which it will respond to. I think this is used with CMD7 to select
 // an active card when there are multiple ones on the same bus.
