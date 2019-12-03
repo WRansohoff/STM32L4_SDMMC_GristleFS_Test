@@ -10,7 +10,7 @@ Although, FAT filesystems sound fairly simple and this application does not inte
 
 # Current Status
 
-The SD/MMC peripheral initializes successfully, and it can send/receive command data to and from a connected SD Card. But I'm still working on the initialization procedure, which is currently failing at the `ACMD41` command because the peripheral is expecting a non-existant CRC check code.
+The SD/MMC peripheral initializes successfully, and it can send/receive command data to and from a connected SD Card. But I'm still working on the initialization procedure, which is currently stuck at the `CMD3` command, which is supposed to ask the card to publish a new 'address' to refer to it by. But that command times out; I think that `CMD2` might need to be called first.
 
 Data transmission on the 4-bit SD card bus and the filesystem library are both still untested.
 
