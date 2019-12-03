@@ -25,4 +25,7 @@ void timer_periodic_trgo( TIM_TypeDef* TIMx, int freq_hz );
 // periodic 'trigger output' updates.
 void timer_adjust_trgo( TIM_TypeDef* TIMx, int freq_hz );
 
+// Delay for a specified number of milliseconds using the given timer.
+void timer_delay( TIM_TypeDef* TIMx, uint32_t millis );
+
 #endif
