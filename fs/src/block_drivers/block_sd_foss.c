@@ -49,7 +49,7 @@ int block_init() {
   sdmmc_cmd_done( sdmmc );
   // Check for valid response types.
   // TODO: macro definitions for constants.
-  if ( cmd_resp_ind != 8 ) {
+  if ( cmd_resp_ind == -1 ) {
     // The card rejected the command; this means it is SDC V1
     // (Or, according to elmchan, MMC V3)
     card.type = SD_CARD_SC;
@@ -73,10 +73,8 @@ int block_init() {
   // card will always respond that it is busy. Weird.
   // You can also set the 'S18R' bit (#24) to check if the card
   // supports 1.8V signalling levels, but that is not done here.
-  // Bits 15-23 specify supported voltage ranges; 0.1V per bit.
-  // (Bit 15 is 2.7V-2.8V, bit 23 is 3.5V-3.6V. Ask for 2.7-3.6V)
   uint32_t acmd_arg =
-    ( card.type == SD_CARD_HC ) ? 0xC0FF8000 : 0x80FF8000;
+    ( card.type == SD_CARD_HC ) ? 0xC0000000 : 0x80000000;
   // Keep calling ACMD41 until the 'done powering up' bit is set.
   // If I read the OCR register right, that bit prevents the
   // 'standard / high capacity' flag from being set when low.
@@ -86,7 +84,7 @@ int block_init() {
     sdmmc_cmd_write( sdmmc,
                      SDMMC_CMD_APP,
                      0x00000000,
-                     SDMMC_RESPONSE_NONE );
+                     SDMMC_RESPONSE_SHORT );
     sdmmc_cmd_done( sdmmc );
     // Send APPCMD41 with HC argument.
     sdmmc_cmd_write( sdmmc,
@@ -157,6 +155,7 @@ int block_init() {
     sdmmc_set_block_len( sdmmc, 512 );
   }
 
+  // Set the bus width to 4 bits.
   sdmmc_set_bus_width( sdmmc, card.addr, SDMMC_BUS_WIDTH_4b );
 
   // Done; return 0 to indicate success.

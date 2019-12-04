@@ -10,25 +10,29 @@
 void sdmmc_setup( SDMMC_TypeDef *SDMMCx ) {
   // Clock control register:
   // * Set the interface to use the rising edge of clock signals.
-  // * Disable clock bypass. (SDMMC_CK = SDMMCCLK)
+  // * Disable clock bypass.
   // * Disable hardware flow control for now. (TODO: Use hw flow ctrl)
   // * Set bus width to 4 bits (microSD cards have DAT0-3 lines)
   // * Disable power-saving mode for now. (TODO: Use PWRSAV bit)
-  // * Set CLKDIV to 0 (even though it is not used with clock bypass)
+  // * Set CLKDIV to 118 for slow speeds. (48MHz / (118+2) = 400KHz)
+  //   Technically, the speed should be <=400KHz until init is done.
   // * Set CLKEN to enable the clock.
   SDMMCx->CLKCR &= ~( SDMMC_CLKCR_CLKDIV |
-                      SDMMC_CLKCR_PWRSAV |
-                      SDMMC_CLKCR_BYPASS |
                       SDMMC_CLKCR_WIDBUS |
                       SDMMC_CLKCR_NEGEDGE |
+                      SDMMC_CLKCR_BYPASS |
+                      SDMMC_CLKCR_PWRSAV |
                       SDMMC_CLKCR_HWFC_EN );
   SDMMCx->CLKCR |=  ( 0x1 << SDMMC_CLKCR_WIDBUS_Pos |
+                      118 << SDMMC_CLKCR_CLKDIV_Pos |
                       SDMMC_CLKCR_CLKEN );
   // Set the card block size to 512 bytes.
   // TODO: It might not be in all cases, but for now this HAL assumes
   // that you will set standard-capacity cards to use 512B blocks.
   SDMMCx->DCTRL &= ~( SDMMC_DCTRL_DBLOCKSIZE );
   SDMMCx->DCTRL |=  ( 9 << SDMMC_DCTRL_DBLOCKSIZE_Pos );
+  // Set the data timeout. For now, just use a fairly long value.
+  SDMMCx->DTIMER =  ( 0x04000000 );
   // Power on the SD/MMC peripheral.
   SDMMCx->POWER |=  ( SDMMC_POWER_PWRCTRL );
   // Wait for the peripheral to exit 'powering up' mode.
@@ -314,6 +318,7 @@ void sdmmc_read_block( SDMMC_TypeDef *SDMMCx,
                        uint16_t card_addr,
                        blockno_t start_block,
                        uint32_t *buf ) {
+  uint32_t resp;
   // Calculate the command argument.
   uint32_t start_addr = ( uint32_t )start_block;
   if ( card_type == SDMMC_SC ) { start_addr *= 512; }
@@ -325,8 +330,7 @@ void sdmmc_read_block( SDMMC_TypeDef *SDMMCx,
                    SDMMC_RESPONSE_SHORT );
   sdmmc_cmd_done( SDMMCx );
 
-  // Prepare for read: set data timeout and length.
-  SDMMCx->DTIMER =  ( 0x00004000 );
+  // Prepare for read: set data length.
   SDMMCx->DLEN   =  ( 512 );
   // Set the data control register for 'card-to-controller' data
   // flow, and enable the data flow state machine.
@@ -339,6 +343,8 @@ void sdmmc_read_block( SDMMC_TypeDef *SDMMCx,
                    SDMMC_CMD_READ_BLOCK,
                    start_addr,
                    SDMMC_RESPONSE_SHORT );
+  sdmmc_cmd_read( SDMMCx, SDMMC_RESPONSE_SHORT,
+                  SDMMC_CHECK_CRC, &resp );
   sdmmc_cmd_done( SDMMCx );
 
   // Read the data from the FIFO buffer as it becomes available.
@@ -390,8 +396,7 @@ void sdmmc_write_block( SDMMC_TypeDef *SDMMCx,
                    SDMMC_RESPONSE_SHORT );
   sdmmc_cmd_done( SDMMCx );
 
-  // Prepare for write: set data timeout and length.
-  SDMMCx->DTIMER =  ( 0x00004000 );
+  // Prepare for write: set data length.
   SDMMCx->DLEN   =  ( 512 );
   // Set the data control register for 'controller-to-card' data
   // flow, and enable the data flow state machine.
