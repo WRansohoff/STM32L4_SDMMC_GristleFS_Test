@@ -55,8 +55,7 @@ void timer_pwm_out( TIM_TypeDef* TIMx, int channel,
   }
   // Set 'update generation' bit to apply settings.
   TIMx->EGR     |=  ( TIM_EGR_UG );
-  // Disable 'one-pulse mode' and start the timer.
-  TIMx->CR1     &= ~( TIM_CR1_OPM );
+  // Start the timer.
   TIMx->CR1     |=  ( TIM_CR1_CEN );
 }
 
@@ -70,8 +69,7 @@ void timer_periodic_trgo( TIM_TypeDef* TIMx, int freq_hz ) {
   // Enable trigger output on timer update events.
   TIMx->CR2 &= ~( TIM_CR2_MMS );
   TIMx->CR2 |=  ( 0x2 << TIM_CR2_MMS_Pos );
-  // Disable 'one-pulse mode' and start the timer.
-  TIMx->CR1 &= ~( TIM_CR1_OPM );
+  // Start the timer.
   TIMx->CR1 |=  ( TIM_CR1_CEN );
 }
 
@@ -86,17 +84,16 @@ void timer_adjust_trgo( TIM_TypeDef* TIMx, int freq_hz ) {
 // just intended for rough signal line delays. (e.g., ~100ms for a
 // display to reset, ~5ms for an SD card to process a command, etc.)
 void timer_delay( TIM_TypeDef* TIMx, uint32_t millis ) {
-  // Use a 10x prescalar, since 80MHz is fast for a 16-bit timer.
-  TIMx->PSC  =  ( 10 );
-  // Set the 'autoreload' to ( SystemCoreClock / 10 / 1000 ) for 1ms.
-  TIMx->ARR  =  ( SystemCoreClock / 10000 ) & 0xFFFF;
-  // Set 'one-pulse mode' and enable the timer.
-  TIMx->CR1 |=  ( TIM_CR1_OPM | TIM_CR1_CEN );
+  // Use a 10000x prescalar, since 80MHz is fast for a 16-bit timer.
+  TIMx->PSC  =  ( 10000 );
+  // Set the 'autoreload' to ( SystemCoreClock / 10000 / 1000 * ms ).
+  TIMx->ARR  =  ( SystemCoreClock * millis / 10000000 ) & 0xFFFF;
+  // Send an update event to clear settings.
+  TIMx->EGR |=  ( TIM_EGR_UG );
+  // Enable the timer.
+  TIMx->CR1 |=  ( TIM_CR1_CEN );
   // Wait for N milliseconds.
-  uint32_t progress = 0;
-  while ( progress < millis ) {
-    while ( TIMx->CR1 & TIM_CR1_CEN ) {};
-    ++progress;
-    TIMx->CR1 |=  ( TIM_CR1_CEN );
-  }
+  while ( TIMx->CNT < TIMx->ARR ) {};
+  // Stop the timer.
+  TIMx->CR1 &= ~( TIM_CR1_CEN );
 }
