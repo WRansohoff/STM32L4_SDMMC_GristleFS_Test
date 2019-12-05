@@ -9,7 +9,6 @@ SDMMC_TypeDef *sdmmc = SDMMC1;
 int block_init() {
   // Currently, the `port` files initialize the interface and I/O
   // pins, so this method just sets up the SD card.
-  uint8_t cmd_resp_ind = 0;
   uint32_t cmd_resp[ 4 ] = { 0, 0, 0, 0 };
 
   // Send CMD0 - no response data is expected, but if the card
@@ -18,15 +17,7 @@ int block_init() {
                    SDMMC_CMD_GO_IDLE,
                    0x00000000,
                    SDMMC_RESPONSE_NONE );
-  cmd_resp_ind = sdmmc_cmd_read_type( sdmmc );
   sdmmc_cmd_done( sdmmc );
-  if ( cmd_resp_ind == 0xFF ) {
-    // Either a timeout or CRC failure occurred. Mark the card
-    // as being in an error state, and return -1.
-    card.type = SD_CARD_ERROR;
-    card.error = SD_ERR_NOT_PRESENT;
-    return -1;
-  }
 
   // Send CMD8 - this is the next step in the init flowchart, to
   // check whether the card supports SD spec >=V2.00 or not.
@@ -43,13 +34,8 @@ int block_init() {
                    0x000001AA,
                    SDMMC_RESPONSE_SHORT );
   // Receive the response, if any.
-  cmd_resp_ind = sdmmc_cmd_read_type( sdmmc );
-  sdmmc_cmd_read( sdmmc, SDMMC_RESPONSE_SHORT,
-                  SDMMC_CHECK_CRC, cmd_resp );
-  sdmmc_cmd_done( sdmmc );
-  // Check for valid response types.
-  // TODO: macro definitions for constants.
-  if ( cmd_resp_ind == -1 ) {
+  if ( sdmmc_cmd_read( sdmmc, SDMMC_RESPONSE_SHORT,
+                       SDMMC_CHECK_CRC, cmd_resp ) == -1 ) {
     // The card rejected the command; this means it is SDC V1
     // (Or, according to elmchan, MMC V3)
     card.type = SD_CARD_SC;
@@ -62,10 +48,12 @@ int block_init() {
     // should be 0b0001 if the card accepts a 2.7-3.6V range.
     if ( ( cmd_resp[ 0 ] & 0x000001FF ) != 0x000001AA ) {
       card.type = SD_CARD_ERROR;
+      sdmmc_cmd_done( sdmmc );
       return -1;
     }
     card.type = SD_CARD_HC;
   }
+  sdmmc_cmd_done( sdmmc );
 
   // App CMD 41 to initialize the card.
   // Send ACMD41 with the 'HCS' bit (#30) set if the card is SD V2+.
@@ -74,7 +62,8 @@ int block_init() {
   // You can also set the 'S18R' bit (#24) to check if the card
   // supports 1.8V signalling levels, but that is not done here.
   uint32_t acmd_arg =
-    ( card.type == SD_CARD_HC ) ? 0xC0000000 : 0x80000000;
+    ( card.type == SD_CARD_HC ) ? 0xC0100000 : 0x80000000;
+    //( card.type == SD_CARD_HC ) ? 0xC0FF8000 : 0x80FF8000;
   // Keep calling ACMD41 until the 'done powering up' bit is set.
   // If I read the OCR register right, that bit prevents the
   // 'standard / high capacity' flag from being set when low.
@@ -125,7 +114,6 @@ int block_init() {
                    SDMMC_CMD_PUB_RCA,
                    0x00000000,
                    SDMMC_RESPONSE_SHORT );
-  cmd_resp_ind = sdmmc_cmd_read_type( sdmmc );
   sdmmc_cmd_read( sdmmc, SDMMC_RESPONSE_SHORT,
                   SDMMC_CHECK_CRC, cmd_resp );
   sdmmc_cmd_done( sdmmc );
@@ -137,7 +125,6 @@ int block_init() {
                    SDMMC_CMD_GET_CSD,
                    ( ( uint32_t )card.addr ) << 16,
                    SDMMC_RESPONSE_LONG );
-  cmd_resp_ind = sdmmc_cmd_read_type( sdmmc );
   sdmmc_cmd_read( sdmmc, SDMMC_RESPONSE_LONG,
                   SDMMC_CHECK_CRC, cmd_resp );
   sdmmc_cmd_done( sdmmc );
@@ -156,7 +143,7 @@ int block_init() {
   }
 
   // Set the bus width to 4 bits.
-  sdmmc_set_bus_width( sdmmc, card.addr, SDMMC_BUS_WIDTH_4b );
+  //sdmmc_set_bus_width( sdmmc, card.addr, SDMMC_BUS_WIDTH_4b );
 
   // Done; return 0 to indicate success.
   return 0;

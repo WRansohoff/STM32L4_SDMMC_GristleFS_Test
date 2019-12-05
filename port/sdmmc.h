@@ -14,6 +14,9 @@
 // Device header file.
 #include "stm32l4xx.h"
 
+// HAL includes.
+#include "port/tim.h"
+
 // Macro definitions. TODO: Enums?
 // SD card response types. These correspond to the STM32's expected
 // values in the `WAITRESP` field of the `CMD` register.

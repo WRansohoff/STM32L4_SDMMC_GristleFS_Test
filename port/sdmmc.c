@@ -8,13 +8,18 @@
  * This is slow; no interrupts, hardware flow control, or DMA.
  */
 void sdmmc_setup( SDMMC_TypeDef *SDMMCx ) {
+  // Power on the SD/MMC peripheral.
+  SDMMCx->POWER |=  ( SDMMC_POWER_PWRCTRL );
+  // Wait for the peripheral to exit 'powering up' mode.
+  while ( ( SDMMCx->POWER & SDMMC_POWER_PWRCTRL ) == 0x2 ) {};
   // Clock control register:
   // * Set the interface to use the rising edge of clock signals.
   // * Disable clock bypass.
   // * Disable hardware flow control for now. (TODO: Use hw flow ctrl)
   // * Set bus width to 4 bits (microSD cards have DAT0-3 lines)
+  //   (TODO: Currently using 1 bit for debugging)
   // * Disable power-saving mode for now. (TODO: Use PWRSAV bit)
-  // * Set CLKDIV to 118 for slow speeds. (48MHz / (118+2) = 400KHz)
+  // * Set CLKDIV to 0x76 for slow speeds.
   //   Technically, the speed should be <=400KHz until init is done.
   // * Set CLKEN to enable the clock.
   SDMMCx->CLKCR &= ~( SDMMC_CLKCR_CLKDIV |
@@ -23,8 +28,8 @@ void sdmmc_setup( SDMMC_TypeDef *SDMMCx ) {
                       SDMMC_CLKCR_BYPASS |
                       SDMMC_CLKCR_PWRSAV |
                       SDMMC_CLKCR_HWFC_EN );
-  SDMMCx->CLKCR |=  ( 0x1 << SDMMC_CLKCR_WIDBUS_Pos |
-                      118 << SDMMC_CLKCR_CLKDIV_Pos |
+  SDMMCx->CLKCR |=  ( 0x76 << SDMMC_CLKCR_CLKDIV_Pos |
+                      //0x1 << SDMMC_CLKCR_WIDBUS_Pos |
                       SDMMC_CLKCR_CLKEN );
   // Set the card block size to 512 bytes.
   // TODO: It might not be in all cases, but for now this HAL assumes
@@ -33,12 +38,6 @@ void sdmmc_setup( SDMMC_TypeDef *SDMMCx ) {
   SDMMCx->DCTRL |=  ( 9 << SDMMC_DCTRL_DBLOCKSIZE_Pos );
   // Set the data timeout. For now, just use a fairly long value.
   SDMMCx->DTIMER =  ( 0x04000000 );
-  // Power on the SD/MMC peripheral.
-  SDMMCx->POWER |=  ( SDMMC_POWER_PWRCTRL );
-  // Wait for the peripheral to exit 'powering up' mode.
-  while ( ( SDMMCx->POWER & SDMMC_POWER_PWRCTRL ) == 0x2 ) {};
-  // TODO: From the RM, it sounds like delaying a few cycles here
-  // might be a good idea to ensure the power supply is stable?
 }
 
 /** Send a command to the SD/MMC card. */
@@ -192,7 +191,7 @@ void sdmmc_set_bus_width( SDMMC_TypeDef *SDMMCx,
                    SDMMC_RESPONSE_SHORT );
   sdmmc_cmd_done( SDMMCx );
 
-  // App CMD6 to set the data bus width to 4. Apparently
+  // App CMD6 to set the data bus width. Apparently
   // this can only be done when the card is in 'transmission mode',
   // which it enters when selected by CMD7. But I'm not exactly
   // sure if this needs to be set for each transaction, or if it will
@@ -201,23 +200,24 @@ void sdmmc_set_bus_width( SDMMC_TypeDef *SDMMCx,
   sdmmc_cmd_write( SDMMCx,
                    SDMMC_CMD_APP,
                    0x00000000,
-                   SDMMC_RESPONSE_NONE );
+                   SDMMC_RESPONSE_SHORT );
   sdmmc_cmd_done( SDMMCx );
   // TODO: Check response for errors.
+  uint32_t resp;
   sdmmc_cmd_write( SDMMCx,
                    SDMMC_APP_SET_BUSW,
                    width,
                    SDMMC_RESPONSE_SHORT );
+  sdmmc_cmd_read( SDMMCx, SDMMC_RESPONSE_SHORT,
+                  SDMMC_CHECK_CRC, &resp );
   sdmmc_cmd_done( SDMMCx );
 
   // CMD7 to de-select the card.
-  // Sending any address except the one that the card previously
-  // published will de-select it. I'm not sure if there are any
-  // guaranteed invalid addresses, so for now, I'll just
-  // XOR the card's address to change all of its bits.
+  // It sounds like 0 is a reserved address, and sending it
+  // should de-select all cards.
   sdmmc_cmd_write( SDMMCx,
                    SDMMC_CMD_SEL_DESEL,
-                   ( ( uint32_t )card_addr ^ 0x0000FFFF ) << 16,
+                   0x00000000,
                    SDMMC_RESPONSE_SHORT );
   sdmmc_cmd_done( SDMMCx );
 }
@@ -359,7 +359,7 @@ void sdmmc_read_block( SDMMC_TypeDef *SDMMCx,
   // Done reading; CMD7 to de-select the card.
   sdmmc_cmd_write( SDMMCx,
                    SDMMC_CMD_SEL_DESEL,
-                   ( ( uint32_t )card_addr ^ 0x0000FFFF ) << 16,
+                   0x00000000,
                    SDMMC_RESPONSE_SHORT );
   sdmmc_cmd_done( SDMMCx );
 }
@@ -418,7 +418,7 @@ void sdmmc_write_block( SDMMC_TypeDef *SDMMCx,
   // Done writing; CMD7 to de-select the card.
   sdmmc_cmd_write( SDMMCx,
                    SDMMC_CMD_SEL_DESEL,
-                   ( ( uint32_t )card_addr ^ 0x0000FFFF ) << 16,
+                   0x00000000,
                    SDMMC_RESPONSE_SHORT );
   sdmmc_cmd_done( SDMMCx );
 }

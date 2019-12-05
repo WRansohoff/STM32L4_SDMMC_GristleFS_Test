@@ -23,15 +23,25 @@ int main(void) {
   // ongoing writes, so the board shouldn't be shut down.
   gpio_hi( GPIOA, 15 );
 
+  // Delay briefly to allow for SD peripheral power-on.
+  // TODO: Why is such a long delay required here?
+  timer_delay( 1000 );
+
   // Initialize the connected SD card.
-  int sderr;
-  block_init();
+  if ( block_init() == -1 ) {
+    gpio_lo( GPIOA, 15 );
+    while( 1 ) {};
+  }
   // Mount the filesystem. Assume that the entire card is formatted,
   // and there is no partition table.
-  fat_mount( 0, block_get_volume_size(), 0 );
+  if ( fat_mount( 0, block_get_volume_size(), 0 ) == -1 ) {
+    gpio_lo( GPIOA, 15 );
+    while( 1 ) {};
+  }
 
   // If a file called 'test.txt' exists, erase it.
   // TODO: Is it okay to just blindly call `fat_unlink`?
+  int sderr;
   int test_fd = fat_open( "test.txt", O_RDWR, S_IWUSR, &sderr );
   if ( test_fd != -1 ) {
     // Close the file, then unlink it.
