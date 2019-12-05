@@ -187,6 +187,9 @@ static inline void board_init( void ) {
   NVIC_EnableIRQ( EXTI15_10_IRQn );
   */
 
+  // Initialize the SysTick timer to tick at 1ms.
+  SysTick_Config( SystemCoreClock / 1000 );
+
   /*
   // Select the system clock as the ADC clock source.
   adc_clock_source( ADC_CLOCK_SYSCLK );

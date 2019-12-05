@@ -7,6 +7,9 @@
 // Device header file.
 #include "stm32l4xx.h"
 
+// 'tick' ms value which the application must define.
+extern volatile uint32_t tick;
+
 // Extern values which must be defined in the application source.
 extern uint32_t SystemCoreClock;
 extern volatile int cur_samples;
@@ -26,6 +29,6 @@ void timer_periodic_trgo( TIM_TypeDef* TIMx, int freq_hz );
 void timer_adjust_trgo( TIM_TypeDef* TIMx, int freq_hz );
 
 // Delay for a specified number of milliseconds using the given timer.
-void timer_delay( TIM_TypeDef* TIMx, uint32_t millis );
+void timer_delay( uint32_t millis );
 
 #endif

@@ -15,6 +15,8 @@
 
 /** Current system clock speed, in Hz. */
 extern uint32_t SystemCoreClock;
+/** Current system tick value, in milliseconds. */
+extern volatile uint32_t tick;
 
 // Audio buffer values.
 /** Audio test option: Amplitude division. Lower values mean higher volume. */

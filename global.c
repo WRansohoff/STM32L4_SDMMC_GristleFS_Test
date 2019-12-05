@@ -52,3 +52,5 @@ volatile int new_gps_messages = 0;
 
 // Global variable to hold the core clock speed in Hertz.
 uint32_t SystemCoreClock = 4000000;
+// Global variable to hold the number of millisecond ticks since boot.
+volatile uint32_t tick = 0;

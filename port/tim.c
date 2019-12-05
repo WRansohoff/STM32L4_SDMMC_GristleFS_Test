@@ -80,20 +80,12 @@ void timer_adjust_trgo( TIM_TypeDef* TIMx, int freq_hz ) {
 }
 
 // Delay for a specified number of milliseconds using the given timer.
-// This is a blocking method. This isn't perfectly accurate, it's
-// just intended for rough signal line delays. (e.g., ~100ms for a
-// display to reset, ~5ms for an SD card to process a command, etc.)
-void timer_delay( TIM_TypeDef* TIMx, uint32_t millis ) {
-  // Use a 10000x prescalar, since 80MHz is fast for a 16-bit timer.
-  TIMx->PSC  =  ( 10000 );
-  // Set the 'autoreload' to ( SystemCoreClock / 10000 / 1000 * ms ).
-  TIMx->ARR  =  ( SystemCoreClock * millis / 10000000 ) & 0xFFFF;
-  // Send an update event to clear settings.
-  TIMx->EGR |=  ( TIM_EGR_UG );
-  // Enable the timer.
-  TIMx->CR1 |=  ( TIM_CR1_CEN );
-  // Wait for N milliseconds.
-  while ( TIMx->CNT < TIMx->ARR ) {};
-  // Stop the timer.
-  TIMx->CR1 &= ~( TIM_CR1_CEN );
+// TODO: Technically, this could tick over and cause an early return.
+void timer_delay( uint32_t millis ) {
+  uint32_t next_tick = tick + millis;
+  while ( next_tick > tick ) {};
+}
+
+void SysTick_handler( void ) {
+  ++tick;
 }
