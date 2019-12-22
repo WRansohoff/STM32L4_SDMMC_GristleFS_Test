@@ -389,6 +389,18 @@ void sdmmc_write_block( SDMMC_TypeDef *SDMMCx,
                    SDMMC_RESPONSE_SHORT );
   sdmmc_cmd_done( SDMMCx );
 
+  // Poll CMD13 until 'ready for data' is set.
+  uint32_t resp = 0x00000000;
+  while ( !( resp & SDMMC_READY_FOR_DATA ) ) {
+    sdmmc_cmd_write( SDMMCx,
+                     SDMMC_CMD_SEL_DESEL,
+                     ( ( uint32_t )card_addr ) << 16,
+                     SDMMC_RESPONSE_SHORT );
+    sdmmc_cmd_read( SDMMCx, SDMMC_RESPONSE_SHORT,
+                    SDMMC_CHECK_CRC, &resp );
+    sdmmc_cmd_done( SDMMCx );
+  }
+
   // CMD24 to write a block of data.
   sdmmc_cmd_write( SDMMCx,
                    SDMMC_CMD_WRITE_BLOCK,
@@ -413,6 +425,22 @@ void sdmmc_write_block( SDMMC_TypeDef *SDMMCx,
     while ( !( SDMMCx->STA & SDMMC_STA_TXFIFOHE ) ) {};
     SDMMCx->FIFO = buf[ buf_ind ];
     ++buf_ind;
+  }
+
+  // Poll CMD13 until the state is back to 'transfer'.
+  // TODO: Technically, it is okay to issue CMD7 and do other things
+  // while the SD card performs its data writes. But for testing,
+  // it seems safest to perform blocking writes and wait for each
+  // one to finish before proceeding. I've already bricked one card...
+  resp = 0x00000000;
+  while ( !( resp & SDMMC_READY_FOR_DATA ) ) {
+    sdmmc_cmd_write( SDMMCx,
+                     SDMMC_CMD_SEL_DESEL,
+                     ( ( uint32_t )card_addr ) << 16,
+                     SDMMC_RESPONSE_SHORT );
+    sdmmc_cmd_read( SDMMCx, SDMMC_RESPONSE_SHORT,
+                    SDMMC_CHECK_CRC, &resp );
+    sdmmc_cmd_done( SDMMCx );
   }
 
   // Done writing; CMD7 to de-select the card.

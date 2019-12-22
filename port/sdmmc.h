@@ -44,6 +44,8 @@
 #define SDMMC_STATE_PRG      ( 7 )
 #define SDMMC_STATE_DIS      ( 8 )
 #define SDMMC_STATE_IO       ( 15 )
+// SD card status register bit flags.
+#define SDMMC_READY_FOR_DATA ( 0x00000100 )
 
 // SD card command index values. Because referring to them as
 // `CMD0`, `CMD1`, etc is confusing and not very helpful.
