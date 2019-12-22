@@ -10,6 +10,7 @@
 // Gristle FAT filesystem includes.
 #include <fcntl.h>
 #include "gristle.h"
+#include "partition.h"
 
 /**
  * Main program.
@@ -33,8 +34,20 @@ int main(void) {
     while( 1 ) {};
   }
   // Mount the filesystem. Assume that the entire card is formatted,
-  // and there is no partition table.
-  if ( fat_mount( 0, block_get_volume_size(), 0 ) == -1 ) {
+  // and find the partition location from the MBR.
+  // TODO: This assumes that there is only one partition, and could
+  // cause buffer overflows if there are multiple partitions (!).
+  struct partition* part_list;
+  // TODO: This buffer should be declared elsewhere
+  // or dynamically allocated.
+  uint8_t block_buf[ 512 ];
+  block_read( 0, block_buf );
+  int num_parts = read_partition_table( block_buf, block_get_volume_size(), &part_list );
+  if ( num_parts <= 0 ) {
+    gpio_lo( GPIOA, 15 );
+    while( 1 ) {};
+  }
+  if ( fat_mount( part_list[ 0 ].start, part_list[ 0 ].length, part_list[ 0 ].type ) == -1 ) {
     gpio_lo( GPIOA, 15 );
     while( 1 ) {};
   }
