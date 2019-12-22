@@ -393,7 +393,7 @@ void sdmmc_write_block( SDMMC_TypeDef *SDMMCx,
   uint32_t resp = 0x00000000;
   while ( !( resp & SDMMC_READY_FOR_DATA ) ) {
     sdmmc_cmd_write( SDMMCx,
-                     SDMMC_CMD_SEL_DESEL,
+                     SDMMC_CMD_GET_STAT,
                      ( ( uint32_t )card_addr ) << 16,
                      SDMMC_RESPONSE_SHORT );
     sdmmc_cmd_read( SDMMCx, SDMMC_RESPONSE_SHORT,
@@ -435,7 +435,7 @@ void sdmmc_write_block( SDMMC_TypeDef *SDMMCx,
   resp = 0x00000000;
   while ( !( resp & SDMMC_READY_FOR_DATA ) ) {
     sdmmc_cmd_write( SDMMCx,
-                     SDMMC_CMD_SEL_DESEL,
+                     SDMMC_CMD_GET_STAT,
                      ( ( uint32_t )card_addr ) << 16,
                      SDMMC_RESPONSE_SHORT );
     sdmmc_cmd_read( SDMMCx, SDMMC_RESPONSE_SHORT,
