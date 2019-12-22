@@ -58,9 +58,9 @@ int main(void) {
   // If the previous steps succeeded, this shouldn't happen.
   if ( test_fd == -1 ) { while( 1 ) {}; }
   // Write "Hello, world!" to the test file.
-  fat_write( test_fd, "Hello, world!\0", 13, &sderr );
+  fat_write( test_fd, "Hello, world!\0\0\0\0", 16, &sderr );
   // Close the file.
-  fat_close( test_fd, &sderr );
+  while( fat_close( test_fd, &sderr ) == -1 ) {};
 
   // Done; un-mount the filesystem to prevent SD card corruption.
   block_halt();
