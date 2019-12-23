@@ -318,6 +318,10 @@ void sdmmc_read_block( SDMMC_TypeDef *SDMMCx,
                        uint16_t card_addr,
                        blockno_t start_block,
                        uint32_t *buf ) {
+  // Clear the data control register.
+  SDMMCx->DCTRL &= ~( SDMMC_DCTRL_DTDIR |
+                      SDMMC_DCTRL_DTEN );
+
   uint32_t resp;
   // Calculate the command argument.
   uint32_t start_addr = ( uint32_t )start_block;
@@ -334,7 +338,7 @@ void sdmmc_read_block( SDMMC_TypeDef *SDMMCx,
   SDMMCx->DLEN   =  ( 512 );
   // Set the data control register for 'card-to-controller' data
   // flow, and enable the data flow state machine.
-  // Note: DTEN is automatically cleared when the transfer completes.
+  // Note: DTEN does not need to be cleared until the next transfer.
   SDMMCx->DCTRL |=  ( SDMMC_DCTRL_DTDIR |
                       SDMMC_DCTRL_DTEN );
 
@@ -378,6 +382,10 @@ void sdmmc_write_block( SDMMC_TypeDef *SDMMCx,
                         uint16_t card_addr,
                         blockno_t start_block,
                         uint32_t *buf ) {
+  // Clear the data control register.
+  SDMMCx->DCTRL &= ~( SDMMC_DCTRL_DTDIR |
+                      SDMMC_DCTRL_DTEN );
+
   // Calculate the command argument.
   uint32_t start_addr = ( uint32_t )start_block;
   if ( card_type == SDMMC_SC ) { start_addr *= 512; }
@@ -406,25 +414,28 @@ void sdmmc_write_block( SDMMC_TypeDef *SDMMCx,
                    SDMMC_CMD_WRITE_BLOCK,
                    start_addr,
                    SDMMC_RESPONSE_SHORT );
+  sdmmc_cmd_read( SDMMCx, SDMMC_RESPONSE_SHORT,
+                  SDMMC_CHECK_CRC, &resp );
   sdmmc_cmd_done( SDMMCx );
 
+  // Clear the 'DATAEND' and 'DBCKEND' flags.
+  SDMMCx->ICR   |=  ( SDMMC_ICR_DATAENDC | SDMMC_ICR_DBCKENDC );
   // Prepare for write: set data length.
   SDMMCx->DLEN   =  ( 512 );
-  // Set the data control register for 'controller-to-card' data
-  // flow, and enable the data flow state machine.
-  // Note: DTEN is automatically cleared when the transfer completes.
-  SDMMCx->DCTRL &= ~( SDMMC_DCTRL_DTDIR );
+  // Note: DTEN does not need to be cleared until the next transfer.
   SDMMCx->DCTRL |=  ( SDMMC_DCTRL_DTEN );
 
   // Write data to the FIFO buffer as space frees up.
   // TODO: Synchronous polling is slow, but okay for testing.
-  int buf_ind = 0;
-  while ( SDMMCx->DCOUNT != 0 ) {
+  int buf_ind = 1;
+  SDMMCx->FIFO = buf[ 0 ];
+  while ( !( SDMMCx->STA & SDMMC_STA_DATAEND ) ) {
     // Use the 'half-empty' flag to send new data as long as
     // at least 8 words in the queue are empty.
-    while ( !( SDMMCx->STA & SDMMC_STA_TXFIFOHE ) ) {};
-    SDMMCx->FIFO = buf[ buf_ind ];
-    ++buf_ind;
+    if ( SDMMCx->STA & SDMMC_STA_TXFIFOHE ) {
+      SDMMCx->FIFO = buf[ buf_ind ];
+      ++buf_ind;
+    }
   }
 
   // Poll CMD13 until the state is back to 'transfer'.
